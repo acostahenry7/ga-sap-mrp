@@ -31,8 +31,7 @@ async function get(params) {
   "MRP"."U_mrp_id",
   "U_mrp_code",
   "MRP"."U_description",
-  "U_brand_code",
-  "U_brand_name",
+  "U_brand_id",
   "U_provider_code",
   "U_provider_name",
   "U_price_total",
@@ -150,6 +149,7 @@ async function create(params, data) {
     )}) VALUES(${formatStamentStrings(Object.values(mrp), "values")});`;
 
     db.setAutoCommit(false);
+    console.log(Code, statement);
 
     await db.exec(statement);
 
@@ -167,6 +167,8 @@ async function create(params, data) {
         }\', ${formatStamentStrings(Object.values(item), "values")});`
     );
 
+    console.log(detailStatement[0]);
+
     for (c of detailStatement) {
       await db.exec(c);
     }
@@ -176,6 +178,7 @@ async function create(params, data) {
   } catch (error) {
     console.log(error);
     db.rollback();
+
     throw error;
   }
 }

@@ -1,4 +1,5 @@
 const { db } = require("../config/db");
+const _ = require("lodash");
 
 async function getBrandList() {
   try {
@@ -17,7 +18,36 @@ async function getBrandList() {
 }
 
 async function getStockSummary(params) {
-  const actualMonth = parseInt(params.month) - 1;
+  const actualMonth = parseInt(params.month);
+
+  let monthFrom = actualMonth;
+  let monthTo = actualMonth - 1 == 0 ? 12 : actualMonth - 1;
+  let months = [];
+
+  let yearTo =
+    actualMonth - 1 == 0 ? parseInt(params.year) - 1 : parseInt(params.year);
+
+  for (let i = 0; i < 12; i++) {
+    if (monthFrom == 0) {
+      monthFrom = 12;
+    }
+    monthFrom -= 1;
+
+    if (i == 11 && monthFrom == 0) {
+      monthFrom = 12;
+    }
+  }
+
+  let monthNumber = monthFrom;
+  for (let i = monthFrom; i < monthFrom + 12; i++) {
+    if (monthNumber > 12) {
+      monthNumber = 1;
+    }
+    months.push(monthNumber);
+
+    monthNumber++;
+  }
+  console.log(months);
 
   try {
     const statement = `SELECT 
@@ -38,7 +68,8 @@ async function getStockSummary(params) {
     "inv_avg_price",
     "year", 
     "month",
-    "sales"
+    "sales",
+    sum("sales") over (partition by "item_code") as "total_sales_per_item"
     FROM (
     SELECT
     'LM' AS "company" ,
@@ -151,21 +182,19 @@ async function getStockSummary(params) {
     ) TB
     WHERE (("year" = '${
       parseInt(params.year) - 1
-    }' AND to_int("month") > ${actualMonth}) OR ("year" = '${
-      params.year
-    }' AND to_int("month") <= ${actualMonth}))
+    }' AND to_int("month") >= ${monthFrom}) OR ("year" = '${yearTo}' AND to_int("month") <= ${monthTo}))
     AND "brand" like '${params.brand || "%"}'
-    order by "year" desc, "month" desc, "sales" desc`;
+    order by "total_sales_per_item" desc, "item_code",  "year" desc, "month" desc
+    LIMIT 10000`;
 
     db.exec(`SET SCHEMA ${params?.schema || "DB_LM"}`);
     console.log(statement);
 
     const res = db.exec(statement);
 
-    console.log(res);
     const result = groupDataByMonth(res, params);
 
-    return result;
+    return { ...result, months };
   } catch (error) {
     console.log(error);
   }
@@ -179,48 +208,72 @@ module.exports = {
 function groupDataByMonth(data, queryParams) {
   let groupedData = [];
 
-  let startingMonth = 1; // parseInt(queryParams.dateFrom.split("-")[1]);
-  let endingMonth = 12; //parseInt(queryParams.dateTo.split("-")[1]);
-  let gridMonths = Math.abs(endingMonth + 1 - startingMonth);
-
-  for (let item of data) {
-    let itemAmounts = data
-      .filter((sItem) => sItem["item_code"] == item["item_code"])
-      .map((i) => ({
-        amount: parseInt(i["sales"]),
-        month: parseInt(i["month"]),
-      }));
-
-    //console.log(itemAmounts);
-
-    if (
-      !groupedData.some(
-        (groupedItem) => groupedItem["item_code"] == item["item_code"]
-      )
-    ) {
-      let gridAmounts = Array(gridMonths).fill(0);
-
-      for (let i = 0; i < gridAmounts.length; i++) {
-        if (itemAmounts[i]?.month) {
-          gridAmounts[itemAmounts[i]?.month - 1 - (startingMonth - 1)] =
-            itemAmounts[i].amount;
-        }
-      }
-
-      groupedData.push({
-        ...item,
-        amounts: gridAmounts,
-      });
+  for (item of data) {
+    let itemExists = groupedData.find((e) => e.item_code == item.item_code);
+    if (itemExists) {
+      let index = groupedData.findIndex(
+        (e) => e.item_code == itemExists.item_code
+      );
+      groupedData[index].amounts.push(parseFloat(item.sales));
+    } else {
+      groupedData.push({ ...item, amounts: [parseFloat(item.sales)] });
     }
   }
 
-  return {
-    groupedData,
-    months: getMonthNamesByRange(startingMonth, endingMonth),
-    nextMonths: getMonthNamesByRange(endingMonth + 1, endingMonth + gridMonths),
-    gridMonths,
-    startingMonth,
-  };
+  groupedData = groupedData.map((item) => ({
+    ...item,
+    amounts: item.amounts.reverse(),
+  }));
+
+  // console.log(groupedData);
+
+  return { groupedData };
+
+  // let groupedData = [];
+
+  // let startingMonth = 1; // parseInt(queryParams.dateFrom.split("-")[1]);
+  // let endingMonth = 12; //parseInt(queryParams.dateTo.split("-")[1]);
+  // let gridMonths = Math.abs(endingMonth + 1 - startingMonth);
+
+  // for (let item of data) {
+  //   let itemAmounts = data
+  //     .filter((sItem) => sItem["item_code"] == item["item_code"])
+  //     .map((i) => ({
+  //       amount: parseInt(i["sales"]),
+  //       month: parseInt(i["month"]),
+  //     }));
+
+  //   console.log(itemAmounts);
+
+  //   if (
+  //     !groupedData.some(
+  //       (groupedItem) => groupedItem["item_code"] == item["item_code"]
+  //     )
+  //   ) {
+  //     let gridAmounts = Array(gridMonths).fill(0);
+
+  //     for (let i = 0; i < gridAmounts.length; i++) {
+  //       endingMonth -= 1;
+  //       if (itemAmounts[i]?.month) {
+  //         gridAmounts[endingMonth] = itemAmounts[i].amount;
+  //       }
+  //     }
+
+  //     groupedData.push({
+  //       ...item,
+  //       order_amount: 0,
+  //       amounts: gridAmounts,
+  //     });
+  //   }
+  // }
+
+  // return {
+  //   groupedData,
+  //   months: getMonthNamesByRange(startingMonth, endingMonth),
+  //   nextMonths: getMonthNamesByRange(endingMonth + 1, endingMonth + gridMonths),
+  //   gridMonths,
+  //   startingMonth,
+  // };
 }
 
 function getMonthNamesByRange(start, end) {

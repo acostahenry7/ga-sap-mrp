@@ -46,6 +46,7 @@ controller.create = async (params, data) => {
     console.log(statement);
 
     await db.exec(statement);
+    return brand;
   } catch (error) {
     console.log(error);
     throw error;
@@ -99,7 +100,7 @@ controller.update = async (params, data) => {
     data.Name = null;
     const brand = new Brand({ ...data });
 
-    console.log(data);
+    console.log(params);
 
     let statement = `UPDATE "${
       params.schema

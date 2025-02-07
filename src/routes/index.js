@@ -67,6 +67,8 @@ module.exports = (app) => {
 
   //BRAND
   router.post("/brand", (req, res) => {
+    console.log(req.body);
+
     brandCtrl
       .create(req.query, req.body)
       .then((data) => {
