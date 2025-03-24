@@ -3,7 +3,7 @@ const { db } = require("../config/db");
 const { converToPascalCase, formatStamentStrings } = require("../utils/string");
 const TABLE = "@GA_BRAND";
 
-const controller = {};
+const controller = { TABLE };
 
 function Brand({ ...args }) {
   const resultingObject = {};
@@ -76,8 +76,6 @@ controller.get = async (params) => {
       response.push(actualItem);
     }
   }
-
-  console.log(response);
 
   return response;
 };

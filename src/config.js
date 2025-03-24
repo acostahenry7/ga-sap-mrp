@@ -6,10 +6,13 @@ function config(app) {
   app.set("port", process.env.GA_MRP_PORT || 3001);
 
   app.use(bodyParser.urlencoded({ extended: true }));
-  app.use(express.urlencoded({ extended: false }));
-  app.use(express.json());
+  app.use(express.urlencoded({ extended: true }));
+  app.use(express.json({ limit: "50mb" }));
+
+  //app.use(express.json({ limit: "50mb" }));
+  // app.use(express.urlencoded({ limit: "200mb", extended: true }));
+
   const corsOptions = {
-    credentials: true,
     origin: "*",
   };
 

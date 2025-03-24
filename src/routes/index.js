@@ -4,6 +4,7 @@ const authCtrl = require("../controller/auth");
 const mrpCtrl = require("../controller/mrp");
 const brandCtrl = require("../controller/brand");
 const prevDataCtrl = require("../controller/prevData");
+const draftsCtrl = require("../controller/drafts");
 
 module.exports = (app) => {
   //AUTH
@@ -27,6 +28,20 @@ module.exports = (app) => {
       })
       .catch((err) => {
         res.status(400).send({ error: true, body: err.message });
+      });
+  });
+
+  router.get("/mrp/next", (req, res) => {
+    console.log("here", req.query);
+
+    mrpCtrl
+      .getNextMrpByBrand(req.query)
+      .then((data) => {
+        res.send(data);
+      })
+      .catch((err) => {
+        console.log(err);
+        res.send(err);
       });
   });
 
@@ -61,7 +76,7 @@ module.exports = (app) => {
       })
       .catch((err) => {
         console.log(err);
-        res.send(err);
+        res.status(500).send({ error: true, body: err.message });
       });
   });
 
@@ -113,6 +128,7 @@ module.exports = (app) => {
       });
   });
 
+  //OTHER
   router.get("/stock-summary", (req, res) => {
     prevDataCtrl
       .getStockSummary(req.query)
@@ -121,6 +137,40 @@ module.exports = (app) => {
       })
       .catch((err) => {
         res.send(err);
+      });
+  });
+  router.get("/providers", (req, res) => {
+    prevDataCtrl
+      .getProviders(req.query)
+      .then((sum) => {
+        res.send(sum);
+      })
+      .catch((err) => {
+        res.send(err);
+      });
+  });
+  router.get("/currencies", (req, res) => {
+    prevDataCtrl
+      .getCurrencies(req.query)
+      .then((sum) => {
+        res.send(sum);
+      })
+      .catch((err) => {
+        res.send(err);
+      });
+  });
+
+  //DRAFTS (PURCHASE ORDER)
+  router.post("/drafts/purchase-order", (req, res) => {
+    console.log(req.body);
+
+    draftsCtrl
+      .createPurchaseOrderDraft(req.query, req.body)
+      .then((data) => {
+        res.send(data);
+      })
+      .catch((err) => {
+        res.status(400).send({ error: true, body: err.message });
       });
   });
 

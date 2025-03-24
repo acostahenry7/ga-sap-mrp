@@ -3,121 +3,233 @@ const { db } = require("../config/db");
 const { converToPascalCase, formatStamentStrings } = require("../utils/string");
 const TABLE = "@GA_MRP";
 const DETAIL_TABLE = "@GA_MRP_DETAIL";
+const { TABLE: BRAND_TABLE } = require("./brand");
 
-function Mrp({ ...args }) {
-  const resultingObject = {};
-  let i = 0;
-  for ([key, val] of Object.entries(args)) {
-    if ((val || val === 0) && key != "schema") {
-      if (key === "Code" || key === "Name") {
-        resultingObject[`${converToPascalCase(key)}`] = val;
-      } else {
-        resultingObject[`U_${converToPascalCase(key)}`] = val;
+function Mrp(
+  {
+    mrpId,
+    mrpCode,
+    description,
+    brandId,
+    providerCode,
+    providerName,
+    priceTotal,
+    currency,
+    suggestedAmount,
+    startYear,
+    startMonth,
+    endYear,
+    endMonth,
+    createdDate,
+    lastModifiedDate,
+    createdBy,
+    lastModifiedBy,
+  },
+  params
+) {
+  let resultingObject = {};
+
+  if (!params?.code) {
+    const [{ max_code: newCode }] = db.exec(
+      `SELECT COALESCE(MAX(CAST ("Code" AS INTEGER)),0) + 1 AS "max_code"
+                  FROM "${params.schema}"."${TABLE}"`
+    );
+    const newMrpId = uuidv4();
+
+    resultingObject = {
+      Code: newCode,
+      Name: mrpCode,
+      U_mrp_id: mrpId || newMrpId,
+      U_mrp_code: mrpCode,
+      U_description: description,
+      U_brand_id: brandId,
+      U_provider_code: providerCode,
+      U_provider_name: providerName,
+      U_price_total: priceTotal,
+      U_currency: currency,
+      U_leadtime: 0,
+      U_suggested_amount: suggestedAmount,
+      U_start_year: startYear,
+      U_start_month: startMonth,
+      U_end_year: endYear,
+      U_end_month: endMonth,
+      U_created_date: createdDate || getDate(),
+      U_last_modified_date: lastModifiedDate || getDate(),
+      U_created_by: createdBy,
+      U_last_modified_by: lastModifiedBy,
+      U_status: "OPENED", //OPENED, CLOSED, CANCELLED
+      U_printed_times: 0,
+    };
+  } else {
+    console.log(arguments);
+
+    let i = 0;
+    for ([key, val] of Object.entries(arguments[0])) {
+      if ((val || val === 0) && key != "schema") {
+        if (key === "Code" || key === "Name") {
+          resultingObject[`${converToPascalCase(key)}`] = val;
+        } else {
+          resultingObject[`U_${converToPascalCase(key)}`] = val;
+        }
       }
+      i++;
     }
-    i++;
   }
 
+  // Object.entries(resultingObject).forEach(([key, val]) => {
+  //   if (!val) {
+  //     delete resultingObject[key];
+  //   }
+  // });
+  if (params.isUpdating) {
+    delete resultingObject.Code;
+    delete resultingObject.Name;
+    delete resultingObject.U_mrp_id;
+    delete resultingObject.U_created_date;
+    delete resultingObject.U_created_by;
+    delete resultingObject.U_status;
+  }
   return Object.setPrototypeOf(resultingObject, this);
 }
 
 async function get(params) {
-  const mrp = Mrp(params);
+  console.log(params);
 
-  const data = db.exec(
-    `SELECT 
-  "MRP"."Code",
-  "MRP"."Name",
-  "MRP"."U_mrp_id",
-  "U_mrp_code",
-  "MRP"."U_description",
-  "U_brand_id",
-  "U_provider_code",
-  "U_provider_name",
-  "U_price_total",
-  "U_leadtime",
-  "MRP"."U_suggested_amount",
-  "U_start_year",
-  "U_start_month",
-  "U_end_year",
-  "U_end_month",
-  "U_created_date",
-  "U_last_modified_date",
-  "U_created_by",
-  "U_last_modified_by",
-  "U_status",
-  "U_printed_times",
-  "MRPD"."Code" AS "U_detail_code",
-  "MRPD"."Name" AS "U_detail_name",
-  "MRPD"."U_mrp_id" AS "fk_mrp_id",
-  "MRPD"."U_item_code" ,
-  "MRPD"."U_factory_item_code" ,
-  "MRPD"."U_description" AS "U_detail_description",
-  "MRPD"."U_alternative_references",
-  "MRPD"."U_model" ,
-  "MRPD"."U_inv_stock",
-  "MRPD"."U_inv_transit",
-  "MRPD"."U_frequency" ,
-  "MRPD"."U_rating" ,
-  "MRPD"."U_price",
-  "MRPD"."U_currency" ,
-  "MRPD"."U_suggested_amount" as "U_detail_suggested_amount",
-  "MRPD"."U_line_total",
-  "MRPD"."U_sales_01",
-  "MRPD"."U_sales_02",
-  "MRPD"."U_sales_03",
-  "MRPD"."U_sales_04",
-  "MRPD"."U_sales_05",
-  "MRPD"."U_sales_06",
-  "MRPD"."U_sales_07",
-  "MRPD"."U_sales_08",
-  "MRPD"."U_sales_09",
-  "MRPD"."U_sales_10",
-  "MRPD"."U_sales_11",
-  "MRPD"."U_sales_12",
-  "MRPD"."U_is_included" 
-  FROM "${params?.schema}"."${TABLE}" "MRP"
-  JOIN "${
-    params?.schema
-  }"."${DETAIL_TABLE}" "MRPD" ON ("MRP"."U_mrp_id" = "MRPD"."U_mrp_id")
-  ${formatStamentStrings(Object.entries(mrp), "where", "MRP")}
-  ORDER BY "MRP"."Code", "MRPD"."Code"`
-  );
+  try {
+    //const mrp = Mrp(params);
 
-  const response = [];
+    const statement = `SELECT 
+      "MRP"."Code",
+      "MRP"."Name",
+      "MRP"."U_mrp_id",
+      "U_mrp_code",
+      "MRP"."U_description",
+      "MRP"."U_brand_id",
+      "BRD"."U_brand_code",
+      "BRD"."U_description" as "brand_description",
+      "MRP"."U_currency",
+      "U_provider_code",
+      "U_provider_name",
+      "U_price_total",
+      "BRD"."U_leadtime",
+      "MRP"."U_suggested_amount",
+      "U_start_year",
+      "U_start_month",
+      "U_end_year",
+      "U_end_month",
+      "U_created_date",
+      "U_last_modified_date",
+      "U_created_by",
+      "U_last_modified_by",
+      "U_status",
+      "U_printed_times",
+      "MRPD"."Code" AS "U_detail_code",
+      "MRPD"."Name" AS "U_detail_name",
+      "MRPD"."U_mrp_id" AS "fk_mrp_id",
+      "MRPD"."U_item_code" ,
+      "MRPD"."U_factory_item_code" ,
+      "MRPD"."U_description" AS "U_detail_description",
+      "MRPD"."U_alternative_references",
+      "MRPD"."U_model" ,
+      "MRPD"."U_inv_stock",
+      "MRPD"."U_inv_transit",
+      "MRPD"."U_frequency" ,
+      "MRPD"."U_avg_demand",
+      "MRPD"."U_reorder_point",
+      "MRPD"."U_rating" ,
+      "MRPD"."U_price" as "last_purchase_price",
+      "MRPD"."U_actual_price" as "price",
+      "MRPD"."U_currency" ,
+      "MRPD"."U_suggested_amount" as "U_detail_suggested_amount",
+      "MRPD"."U_order_amount",
+      "MRPD"."U_line_total",
+      "MRPD"."U_sales_01",
+      "MRPD"."U_sales_02",
+      "MRPD"."U_sales_03",
+      "MRPD"."U_sales_04",
+      "MRPD"."U_sales_05",
+      "MRPD"."U_sales_06",
+      "MRPD"."U_sales_07",
+      "MRPD"."U_sales_08",
+      "MRPD"."U_sales_09",
+      "MRPD"."U_sales_10",
+      "MRPD"."U_sales_11",
+      "MRPD"."U_sales_12",
+      "MRPD"."U_is_included" 
+    FROM "${params?.schema}"."${TABLE}" "MRP"
+    JOIN "${
+      params?.schema
+    }"."${DETAIL_TABLE}" "MRPD" ON ("MRP"."U_mrp_id" = "MRPD"."U_mrp_id")
+    JOIN "${
+      params?.schema
+    }"."${BRAND_TABLE}" "BRD" ON ("MRP"."U_brand_id" = "BRD"."U_brand_id")
+    WHERE "MRP"."U_brand_id" LIKE '${params.brandId || "%"}'
+    AND YEAR("MRP"."U_created_date") like '${params.targetYear || "%"}'
+    AND MONTH("MRP"."U_created_date") like '${params.targetMonth || "%"}'
+    AND "MRP"."U_status" <> 'CANCELED'
+    ORDER BY "MRP"."Code", "MRPD"."Code"`;
+    console.log(statement);
+    const data = db.exec(statement);
 
-  for (item of data) {
-    //if (!response.some((sbItem) => sbItem.Code === item.Code)) {
-    let isDetailField = false;
-    let actualItem = {};
-    //actualItem.detail = [];
+    const response = [];
 
-    for ([key, value] of Object.entries(item)) {
-      if (key === "U_detail_code") {
-        actualItem.detail = [];
-        isDetailField = true;
-        actualItem.detail.push({});
+    for (item of data) {
+      //if (!response.some((sbItem) => sbItem.Code === item.Code)) {
+      let isDetailField = false;
+      let actualItem = {};
+      //actualItem.detail = [];
+
+      for ([key, value] of Object.entries(item)) {
+        if (key === "U_detail_code") {
+          actualItem.detail = [];
+          isDetailField = true;
+          actualItem.detail.push({});
+        }
+
+        if (isDetailField) {
+          actualItem.detail[0][key] = value;
+        } else {
+          actualItem[key] = value;
+        }
       }
 
-      if (isDetailField) {
-        actualItem.detail[0][key] = value;
+      if (response.some((sbItem) => sbItem.Code === item.Code)) {
+        let currentIndex = response.findIndex((i) => i.Code == item.Code);
+
+        response[currentIndex].detail.push(actualItem.detail[0]);
       } else {
-        actualItem[key] = value;
+        response.push(actualItem);
       }
     }
 
-    if (response.some((sbItem) => sbItem.Code === item.Code)) {
-      let currentIndex = response.findIndex((i) => i.Code == item.Code);
-
-      response[currentIndex].detail.push(actualItem.detail[0]);
-    } else {
-      response.push(actualItem);
-    }
+    return response;
+  } catch (error) {
+    console.log(error);
   }
+}
 
-  console.log(response);
+async function getNextMrpByBrand(params) {
+  try {
+    const statement = `SELECT
+    "PREFIX" || LPAD("NUMBER"+1, 8, '0') as "mrp_code"
+    FROM (
+    SELECT 
+        MAX("U_brand_code") AS "PREFIX",
+        MAX(COALESCE(SUBSTRING_REGEXPR(CONCAT(BRAND."U_brand_code",'([0-9]+)') IN "U_mrp_code" GROUP 1),0)) AS "NUMBER"
+    FROM "${params.schema}"."${TABLE}" MRP
+    RIGHT JOIN "${params.schema}"."${BRAND_TABLE}" BRAND ON (MRP."U_brand_id" = BRAND."U_brand_id" AND MRP."U_status" <> 'CANCELED' )
+    WHERE BRAND."U_brand_id" = '${params.brandId}')`;
 
-  return response;
+    console.log(statement);
+
+    const [{ mrp_code }] = await db.exec(statement);
+
+    console.log("####", mrp_code, statement);
+
+    return { next: mrp_code };
+  } catch (error) {
+    console.log(error);
+  }
 }
 
 async function create(params, data) {
@@ -130,16 +242,17 @@ async function create(params, data) {
     }
 
     /*CREATING MRP ENTRY IN THE MASTER TABLE*/
-    const [{ max_code: Code }] =
-      await db.exec(`SELECT COALESCE(MAX(CAST ("Code" AS INTEGER)),0) + 1 AS "max_code"
-                    FROM "${params.schema}"."${TABLE}"`);
+    // const [{ max_code: Code }] =
+    //   await db.exec(`SELECT COALESCE(MAX(CAST ("Code" AS INTEGER)),0) + 1 AS "max_code"
+    //                 FROM "${params.schema}"."${TABLE}"`);
 
-    const id = uuidv4();
+    // const id = uuidv4();
     const detailData = data.detail;
 
     data.detail = null;
 
-    const mrp = new Mrp({ Code, Name: data.mrpCode, mrpId: id, ...data });
+    const mrp = new Mrp({ ...data }, params);
+    console.log(mrp);
 
     let statement = `INSERT INTO "${
       params.schema
@@ -147,9 +260,8 @@ async function create(params, data) {
       Object.keys(mrp),
       "keys"
     )}) VALUES(${formatStamentStrings(Object.values(mrp), "values")});`;
-
     db.setAutoCommit(false);
-    console.log(Code, statement);
+    console.log(statement);
 
     await db.exec(statement);
 
@@ -161,16 +273,26 @@ async function create(params, data) {
 
     const detailStatement = detailData.map(
       (item, index) =>
-        `INSERT INTO "${params.schema}"."${DETAIL_TABLE}"
+        `INSERT INTO "${
+          params.schema
+        }"."${DETAIL_TABLE}" (\"Code\", \"Name\", \"U_mrp_id\", ${formatStamentStrings(
+          Object.keys({ ...item }).map((item) =>
+            converToPascalCase(item, true)
+          ),
+          "keys"
+        )})
            VALUES(\'${detailCode + index}\' , \'${detailCode + index}\', \'${
           mrp.U_mrp_id
         }\', ${formatStamentStrings(Object.values(item), "values")});`
     );
 
-    console.log(detailStatement[0]);
+    let counter = 0;
+    for (let c of detailStatement) {
+      console.log(c);
 
-    for (c of detailStatement) {
       await db.exec(c);
+      console.log(counter + 1 + "of" + detailStatement.length);
+      counter++;
     }
     db.commit();
 
@@ -197,9 +319,12 @@ async function update(params, data) {
     db.setAutoCommit(false);
 
     //UPDATING MRP ENTRY IN THE MASTER TABLE
-    data.Code = null;
-    data.Name = null;
-    const mrp = new Mrp({ ...data });
+    // data.Code = null;
+    // data.Name = null;
+    const detailData = data.detail;
+
+    data.detail = null;
+    const mrp = new Mrp({ ...data }, { ...params, isUpdating: true });
 
     console.log(data);
 
@@ -208,10 +333,32 @@ async function update(params, data) {
     }"."${TABLE}" SET ${formatStamentStrings(
       Object.entries(mrp),
       "set"
-    )} where "Code" = ${params.code}`;
+    )} where "U_mrp_id" = '${params.mrpId}'`;
     console.log(statement);
 
     db.exec(statement);
+
+    const detailStatement = detailData.map(
+      (item, index) =>
+        `UPDATE "${params.schema}"."${DETAIL_TABLE}"
+         SET ${formatStamentStrings(
+           Object.entries({ ...item, itemCode: null }).map(([key, val]) => [
+             converToPascalCase(key, true),
+             val,
+           ]),
+           "set"
+         )} WHERE "U_mrp_id" = '${params.mrpId}'
+          AND "U_item_code" = '${item.itemCode}'`
+    );
+
+    let counter = 0;
+    for (let c of detailStatement) {
+      console.log(c);
+
+      await db.exec(c);
+      console.log(counter + 1 + "of" + detailStatement.length);
+      counter++;
+    }
 
     db.commit();
     return mrp;
@@ -224,20 +371,49 @@ async function update(params, data) {
 
 async function remove(params) {
   try {
-    const currentMrp = get(params);
-    console.log(currentMrp);
+    const [{ U_status: currentStatus }] = db.exec(
+      `SELECT "U_status" FROM "${params.schema}"."${TABLE}" WHERE "U_mrp_id" = '${params.mrpId}'`
+    );
+    console.log("##", currentStatus);
 
-    //const statement = `DELETE FROM "${params.schema}"."${TABLE}" WHERE "Code" = ${params.code}`;
-    //db.exec(statement);
+    // const detailStatement = `UPDATE "${params.schema}"."${DETAIL_TABLE}"
+    // SET "U_status" = 'CANCELLED'
+    // WHERE "U_mrp_id" = '${params.mrpId}'`;
 
-    return true;
+    // db.exec(detailStatement);
+
+    if (currentStatus == "OPENED") {
+      const statement = `UPDATE "${params.schema}"."${TABLE}"
+      SET "U_status" = 'CANCELED'
+      WHERE "U_mrp_id" = '${params.mrpId}'`;
+      db.exec(statement);
+      return true;
+    } else if (currentStatus == "CLOSED") {
+      throw new Error("Este documento ya está cerrado y NO permite cambios");
+    } else {
+      return false;
+    }
   } catch (error) {
     throw error;
   }
 }
 
+function getDate() {
+  //Date
+  const date = new Date().getDate();
+  const month = new Date().getMonth() + 1;
+  const year = new Date().getFullYear();
+  const fullDate = `${year}${
+    month.toString().length == 1 ? `${"0" + month}` : month
+  }${date.toString().length == 1 ? `${"0" + date}` : date}`;
+
+  return fullDate.toString();
+}
+
 module.exports = {
+  TABLE,
   get,
+  getNextMrpByBrand,
   create,
   update,
   remove,

@@ -1,7 +1,11 @@
-function converToPascalCase(str) {
+function converToPascalCase(str, addPrefix) {
+  str = str.replace(/[^a-zA-Z0-9]/g, "");
   let result = "";
+  let { number } = splitStringAndNumbers(str);
+  str = splitStringAndNumbers(str).text;
 
   let i = 0;
+
   for (c of str) {
     if (c == c.toUpperCase() && i != 0) {
       result += "_" + c.toLowerCase();
@@ -11,6 +15,13 @@ function converToPascalCase(str) {
     i++;
   }
 
+  if (number) {
+    result += "_" + number;
+  }
+
+  if (addPrefix) {
+    result = "U_" + result;
+  }
   return result;
 }
 
@@ -28,6 +39,7 @@ function formatStamentStrings(values, type, table) {
       break;
     case "set":
       result = values
+        .filter(([key, val]) => val != null)
         .map(([key, val]) =>
           typeof val == "string"
             ? ` \"${key}\" = \'${val}\' `
@@ -38,6 +50,10 @@ function formatStamentStrings(values, type, table) {
     case "where":
       result = values
         .map(([key, val], index) => {
+          if (key.toLowerCase().includes("date")) {
+            return index;
+          }
+
           let suffix = "";
           if (index == 0) {
             suffix = "WHERE";
@@ -60,6 +76,14 @@ function formatStamentStrings(values, type, table) {
   return result;
 
   // \'${data._SCGD_VEHICULO_U_Num_VIN}\'
+}
+
+function splitStringAndNumbers(str) {
+  const match = str.match(/^(\D*)(\d*)$/);
+  return {
+    text: match[1] || "", // Non-numeric part
+    number: match[2] || "", // Numeric part
+  };
 }
 
 module.exports = {

@@ -78,7 +78,7 @@ async function getStockSummary(params) {
     T0."ItemCode" AS "item_code",
     T0."U_GB_OldItemCode" as "factory_item_code",
     T0."ItemName" AS "description",
-    COALESCE("U_GB_VehicleModel",'') || COALESCE("U_GB_VehicleYear",'') AS "model", 
+    COALESCE("U_GB_VehicleModel",'') ||  ' (' ||COALESCE("U_GB_VehicleYear",'') || ')' AS "model", 
     T0."OnHand" AS "Existencia",
     T0."LastPurPrc" AS "last_purchase_price",
     T5."Rate"  AS "rate",
@@ -178,14 +178,17 @@ async function getStockSummary(params) {
     WHERE 1 = 1 
 
     AND T0."validFor" = 'Y'
-    AND T0."QryGroup8" = 'N'
+    AND T0."QryGroup8" = 'N' 
+    AND T0."QryGroup10" = 'N'
+    AND T0."PrchseItem" = 'Y'
+    AND T0."InvntItem" = 'Y'
     ) TB
     WHERE (("year" = '${
       parseInt(params.year) - 1
     }' AND to_int("month") >= ${monthFrom}) OR ("year" = '${yearTo}' AND to_int("month") <= ${monthTo}))
     AND "brand" like '${params.brand || "%"}'
     order by "total_sales_per_item" desc, "item_code",  "year" desc, "month" desc
-    LIMIT 10000`;
+    --LIMIT 10000`;
 
     db.exec(`SET SCHEMA ${params?.schema || "DB_LM"}`);
     console.log(statement);
@@ -200,9 +203,34 @@ async function getStockSummary(params) {
   }
 }
 
+async function getProviders(params) {
+  try {
+    const statement = `SELECT "CardCode", "CardName", "Currency" FROM "${params.schema}"."OCRD" WHERE "CardType" = 'S'`;
+    const res = db.exec(statement);
+
+    return res;
+  } catch (error) {
+    console.log(error);
+    throw error;
+  }
+}
+async function getCurrencies(params) {
+  try {
+    const statement = `	SELECT "CurrCode", "CurrName", "DocCurrCod" FROM "${params.schema}"."OCRN" `;
+    const res = db.exec(statement);
+
+    return res;
+  } catch (error) {
+    console.log(error);
+    throw error;
+  }
+}
+
 module.exports = {
   getBrandList,
   getStockSummary,
+  getProviders,
+  getCurrencies,
 };
 
 function groupDataByMonth(data, queryParams) {
