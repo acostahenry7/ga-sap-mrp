@@ -10,17 +10,19 @@ async function createPurchaseOrderDraft(params, data) {
         Cookie: `B1SESSION=${params.sessionId}`,
       },
     });
-    console.log(res);
+    //console.log(res);
     //CHANGE MRP STATUS TO CLOSE
-    db.exec(
-      `UPDATE "${params.schema}"."${MRP_TABLE}" SET "U_status" = 'CLOSED' WHERE "U_mrp_id" = '${params.mrpId}'`
-    );
+    const statement = `UPDATE "${params.schema}"."${MRP_TABLE}" SET "U_status" = 'CLOSED' WHERE "U_mrp_id" = '${params.mrpId}'`;
+
+    await db.exec(statement);
 
     return res.data;
   } catch (error) {
     console.log(error);
 
-    if (error.response.data.error.message) {
+    if (error?.response?.data?.error?.message) {
+      console.log(error?.response?.data?.error);
+
       throw new Error(error.response.data.error.message.value);
     } else {
       throw error;

@@ -133,6 +133,7 @@ async function get(params) {
       "MRPD"."U_model" ,
       "MRPD"."U_inv_stock",
       "MRPD"."U_inv_transit",
+      "MRPD"."U_inv_transit" + "MRPD"."U_inv_stock" as "sum_inv_trans",
       "MRPD"."U_frequency" ,
       "MRPD"."U_avg_demand",
       "MRPD"."U_reorder_point",
