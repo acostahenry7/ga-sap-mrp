@@ -87,7 +87,7 @@ async function getStockSummary(params) {
     COALESCE(T1."InvQty",0) AS "inv_stock",
     --COALESCE(T1."InvCpm",0) AS "InvCpm",
     COALESCE(T1."InvAvgPrice",0) AS "inv_avg_price",
-    COALESCE(T4."Pedido",0) as "inv_transit",
+    COALESCE(T4."Pedido",0) + COALESCE(T7."FacturaProveedor",0) as "inv_transit",
     T2."Year" as "year", 
     T2."Month" as "month",
     COALESCE(T3."SalesQty",0) as "sales"
@@ -174,6 +174,12 @@ async function getStockSummary(params) {
                     FROM "OPOR" TA INNER JOIN "POR1" TB ON TA."DocEntry" = TB."DocEntry"
                     WHERE 1 =1  AND TA."CANCELED" = 'N' AND TA."DocStatus" <> 'C'  AND TB."LineStatus" <> 'C' GROUP BY TB."ItemCode"
         ) T4 ON T0."ItemCode" = T4."ItemCode"
+           LEFT JOIN (
+                  SELECT TB."ItemCode" "ItemCode",
+                          SUM(TB."Quantity") AS "FacturaProveedor"
+                    FROM "OPCH" TA INNER JOIN "PCH1" TB ON TA."DocEntry" = TB."DocEntry"
+                    WHERE 1 =1  AND TA."DocType"='I' AND TA."isIns" = 'Y' AND TA."CANCELED" = 'N' AND TA."DocStatus" <> 'C'  AND TB."LineStatus" <> 'C' GROUP BY TB."ItemCode"
+        ) T7 ON T0."ItemCode" = T7."ItemCode" 
       
     WHERE 1 = 1 
 
