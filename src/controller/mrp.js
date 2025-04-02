@@ -323,11 +323,13 @@ async function update(params, data) {
     // data.Code = null;
     // data.Name = null;
     const detailData = data.detail;
+    const insertData = data.newItems;
 
-    data.detail = null;
+    delete data.detail;
+    delete data.newItems;
     const mrp = new Mrp({ ...data }, { ...params, isUpdating: true });
 
-    console.log(data);
+    console.log(insertData);
 
     let statement = `UPDATE "${
       params.schema
@@ -339,6 +341,46 @@ async function update(params, data) {
 
     db.exec(statement);
 
+    // PROCESING DETAIL
+
+    //INSERT
+
+    const [{ max_code: detailCode }] =
+      await db.exec(`SELECT COALESCE(MAX(CAST ("Code" AS INTEGER)),0) + 1 AS "max_code"
+                  FROM "${params.schema}"."${DETAIL_TABLE}"`);
+
+    const insertStatement = insertData
+      .map((item) => {
+        delete item.isNewItem;
+        return item;
+      })
+      .map(
+        (item, index) =>
+          `INSERT INTO "${
+            params.schema
+          }"."${DETAIL_TABLE}" (\"Code\", \"Name\", \"U_mrp_id\", ${formatStamentStrings(
+            Object.keys({ ...item }).map((item) =>
+              converToPascalCase(item, true)
+            ),
+            "keys"
+          )})
+           VALUES(\'${detailCode + index}\' , \'${detailCode + index}\', \'${
+            params.mrpId
+          }\', ${formatStamentStrings(Object.values(item), "values")});`
+      );
+
+    let counter = 0;
+    for (let c of insertStatement) {
+      await db.exec(c);
+      console.log(
+        "INSERTING...",
+        counter + 1 + " of " + insertStatement.length
+      );
+      counter++;
+    }
+    console.log(insertStatement[0]);
+
+    //UPDATE
     const detailStatement = detailData.map(
       (item, index) =>
         `UPDATE "${params.schema}"."${DETAIL_TABLE}"
@@ -352,12 +394,10 @@ async function update(params, data) {
           AND "U_item_code" = '${item.itemCode}'`
     );
 
-    let counter = 0;
+    counter = 0;
     for (let c of detailStatement) {
-      console.log(c);
-
       await db.exec(c);
-      console.log(counter + 1 + "of" + detailStatement.length);
+      console.log("UPDATING...", counter + 1 + " of " + detailStatement.length);
       counter++;
     }
 

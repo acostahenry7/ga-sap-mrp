@@ -192,7 +192,7 @@ async function getStockSummary(params) {
     WHERE (("year" = '${
       parseInt(params.year) - 1
     }' AND to_int("month") >= ${monthFrom}) OR ("year" = '${yearTo}' AND to_int("month") <= ${monthTo}))
-    AND "brand" like '${params.brand || "%"}'
+    AND "brand_code" like '${params.brand || "%"}'
     order by "total_sales_per_item" desc, "item_code",  "year" desc, "month" desc
     --LIMIT 10000`;
 
