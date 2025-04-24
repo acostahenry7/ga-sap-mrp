@@ -152,6 +152,7 @@ async function getStockSummary(params) {
                     WHERE 1 =1 
                       AND TA."CANCELED" = 'N'
                   AND YEAR(TA."DocDate") > 2016
+                  AND TA."U_GB_Concepto" in('62070304', '62070305')
                     GROUP BY TB."ItemCode",  YEAR(TA."DocDate"), MONTH(TA."DocDate")
 
       UNION ALL
