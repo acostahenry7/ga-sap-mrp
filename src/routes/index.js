@@ -128,6 +128,18 @@ module.exports = (app) => {
       });
   });
 
+  //MODEL
+  router.get("/models", (req, res) => {
+    prevDataCtrl
+      .getModelList(req.query)
+      .then((models) => {
+        res.send(models);
+      })
+      .catch((err) => {
+        res.send(err);
+      });
+  });
+
   //OTHER
   router.get("/stock-summary", (req, res) => {
     prevDataCtrl

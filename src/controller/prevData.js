@@ -17,6 +17,20 @@ async function getBrandList() {
   }
 }
 
+async function getModelList(params) {
+  try {
+    let brands = await db.exec(
+      `select DISTINCT("U_GB_VehicleModel") AS "model"
+      from "${params.schema}"."OITM" 
+      WHERE "U_GB_VehicleModel" IS NOT NULL
+      ORDER BY "U_GB_VehicleModel"`
+    );
+
+    return brands;
+  } catch (error) {
+    console.log(error);
+  }
+}
 async function getStockSummary(params) {
   const actualMonth = parseInt(params.month);
 
@@ -47,7 +61,7 @@ async function getStockSummary(params) {
 
     monthNumber++;
   }
-  console.log(months);
+  console.log("###########@", params.models?.length);
 
   try {
     const statement = `SELECT 
@@ -57,6 +71,8 @@ async function getStockSummary(params) {
     "item_code",
     "factory_item_code",
     "description",
+    "factory_description",
+    "filter_model",
     "model",
     "last_purchase_price",
     "rate",
@@ -78,7 +94,9 @@ async function getStockSummary(params) {
     T0."ItemCode" AS "item_code",
     T0."U_GB_OldItemCode" as "factory_item_code",
     T0."ItemName" AS "description",
+    T0."FrgnName" AS "factory_description",
     COALESCE("U_GB_VehicleModel",'') ||  ' (' ||COALESCE("U_GB_VehicleYear",'') || ')' AS "model", 
+    "U_GB_VehicleModel" AS "filter_model",
     T0."OnHand" AS "Existencia",
     T0."LastPurPrc" AS "last_purchase_price",
     T5."Rate"  AS "rate",
@@ -194,7 +212,15 @@ async function getStockSummary(params) {
       parseInt(params.year) - 1
     }' AND to_int("month") >= ${monthFrom}) OR ("year" = '${yearTo}' AND to_int("month") <= ${monthTo}))
     AND "brand_code" like '${params.brand || "%"}'
-    order by "total_sales_per_item" desc, "item_code",  "year" desc, "month" desc
+    ${
+      params.models?.length > 0
+        ? `AND "filter_model" in (${params.models
+            ?.split(",")
+            .map((item) => `'${item}'`)
+            .join(",")})`
+        : ""
+    }
+    order by "model"desc, "total_sales_per_item" desc, "item_code",  "year" desc, "month" desc
     --LIMIT 10000`;
 
     db.exec(`SET SCHEMA ${params?.schema || "DB_LM"}`);
@@ -235,6 +261,7 @@ async function getCurrencies(params) {
 
 module.exports = {
   getBrandList,
+  getModelList,
   getStockSummary,
   getProviders,
   getCurrencies,
