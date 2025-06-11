@@ -5,6 +5,9 @@ const mrpCtrl = require("../controller/mrp");
 const brandCtrl = require("../controller/brand");
 const prevDataCtrl = require("../controller/prevData");
 const draftsCtrl = require("../controller/drafts");
+const path = require("path");
+const multer = require("multer");
+const fs = require("fs");
 
 module.exports = (app) => {
   //AUTH
@@ -183,6 +186,52 @@ module.exports = (app) => {
       })
       .catch((err) => {
         res.status(400).send({ error: true, body: err.message });
+      });
+  });
+
+  //UPLOAD PRICE FILE
+  const storage = multer.diskStorage({
+    destination(req, res, cb) {
+      console.log("#####", req.body);
+      const route = path.join(__dirname, `../price-files`);
+      fs.mkdirSync(route, { recursive: true });
+      cb(null, route);
+    },
+    filename(req, file, cb) {
+      let fName;
+
+      if (req.body.name.lastIndexOf(".") != -1) {
+        fName = req.body.name.substring(0, req.body.name.lastIndexOf("."));
+      } else {
+        fName = req.body.name;
+      }
+
+      //console.log("#####", fName);
+      let fileExtension = file.originalname.substring(
+        file.originalname.lastIndexOf(".") + 1
+      );
+
+      const filename = `${fName}.${fileExtension}`;
+
+      req.body = {
+        filepath: `${path.join(__dirname, `../price-files`)}/${filename}`,
+        ...req.body,
+      };
+
+      cb(null, filename);
+    },
+  });
+
+  let upload = multer({ storage });
+
+  router.post("/upload-price-file", upload.single("file"), (req, res) => {
+    mrpCtrl
+      .processPriceFile(req.body)
+      .then((data) => {
+        res.send(data);
+      })
+      .catch((err) => {
+        console.log(err);
       });
   });
 
