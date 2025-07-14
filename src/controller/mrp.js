@@ -467,28 +467,32 @@ async function remove(params) {
 }
 
 async function processPriceFile(queryParams) {
-  const data = handleFileReading(queryParams.filepath);
+  try {
+    const data = handleFileReading(queryParams.filepath);
 
-  const keys = Object.keys(data[0]);
+    console.log(data);
+    const keys = Object.keys(data[0]);
 
-  const parsedData = data.map((item) => ({
-    item_code: item[keys[0]],
-    description: item[keys[1]],
-    models: item[keys[2]],
-    amount: item[keys[3]],
-    price: item[keys[4]],
-    line_total: item[keys[5]],
-  }));
+    const parsedData = data.map((item) => ({
+      item_code: item[keys[0]],
+      //description: item[keys[1]],
+      //models: item[keys[2]],
+      amount: item[keys[1]],
+      price: item[keys[2]],
+      line_total: parseFloat(item[keys[1]]) * parseFloat(item[keys[2]]),
+    }));
+    console.log(parsedData);
 
-  console.log(parsedData);
-
-  return parsedData;
+    return parsedData;
+  } catch (error) {
+    console.log(error);
+  }
 }
 
 function handleFileReading(filePath) {
   const file = reader.readFile(filePath);
 
-  const temp = reader.utils.sheet_to_json(file.Sheets[file.SheetNames[1]]);
+  const temp = reader.utils.sheet_to_json(file.Sheets[file.SheetNames[0]]);
   let data = [];
   temp.map((item) => {
     data.push(item);
