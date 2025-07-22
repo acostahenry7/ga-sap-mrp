@@ -126,46 +126,8 @@ async function get(params) {
       "U_created_by",
       "U_last_modified_by",
       "U_status",
-      "U_printed_times",
-      "MRPD"."Code" AS "U_detail_code",
-      "MRPD"."Name" AS "U_detail_name",
-      "MRPD"."U_mrp_id" AS "fk_mrp_id",
-      "MRPD"."U_item_code" ,
-      "MRPD"."U_factory_item_code" ,
-      "MRPD"."U_description" AS "U_detail_description",
-      "MRPD"."U_factory_detail_description",
-      "MRPD"."U_alternative_references",
-      "MRPD"."U_model" ,
-      "MRPD"."U_inv_stock",
-      "MRPD"."U_inv_transit",
-      "MRPD"."U_inv_transit" + "MRPD"."U_inv_stock" as "sum_inv_trans",
-      "MRPD"."U_frequency" ,
-      "MRPD"."U_avg_demand",
-      "MRPD"."U_reorder_point",
-      "MRPD"."U_rating" ,
-      "MRPD"."U_price" as "last_purchase_price",
-      "MRPD"."U_actual_price" as "price",
-      "MRPD"."U_currency" ,
-      "MRPD"."U_suggested_amount" as "U_detail_suggested_amount",
-      "MRPD"."U_order_amount",
-      "MRPD"."U_line_total",
-      "MRPD"."U_sales_01",
-      "MRPD"."U_sales_02",
-      "MRPD"."U_sales_03",
-      "MRPD"."U_sales_04",
-      "MRPD"."U_sales_05",
-      "MRPD"."U_sales_06",
-      "MRPD"."U_sales_07",
-      "MRPD"."U_sales_08",
-      "MRPD"."U_sales_09",
-      "MRPD"."U_sales_10",
-      "MRPD"."U_sales_11",
-      "MRPD"."U_sales_12",
-      "MRPD"."U_is_included" 
+      "U_printed_times"
     FROM "${params?.schema}"."${TABLE}" "MRP"
-    JOIN "${
-      params?.schema
-    }"."${DETAIL_TABLE}" "MRPD" ON ("MRP"."U_mrp_id" = "MRPD"."U_mrp_id")
     JOIN "${
       params?.schema
     }"."${BRAND_TABLE}" "BRD" ON ("MRP"."U_brand_id" = "BRD"."U_brand_id")
@@ -173,42 +135,126 @@ async function get(params) {
     AND YEAR("MRP"."U_created_date") like '${params.targetYear || "%"}'
     AND MONTH("MRP"."U_created_date") like '${params.targetMonth || "%"}'
     AND "MRP"."U_status" <> 'CANCELED'
-    ORDER BY "MRP"."Code", "MRPD"."Code"`;
+    ORDER BY "MRP"."U_created_date" desc,  "BRD"."U_description"`;
     console.log(statement);
     const data = db.exec(statement);
 
     const response = [];
 
-    for (item of data) {
-      //if (!response.some((sbItem) => sbItem.Code === item.Code)) {
-      let isDetailField = false;
-      let actualItem = {};
-      //actualItem.detail = [];
+    // for (item of data) {
+    //   //if (!response.some((sbItem) => sbItem.Code === item.Code)) {
+    //   let isDetailField = false;
+    //   let actualItem = {};
+    //   //actualItem.detail = [];
 
-      for ([key, value] of Object.entries(item)) {
-        if (key === "U_detail_code") {
-          actualItem.detail = [];
-          isDetailField = true;
-          actualItem.detail.push({});
-        }
+    //   for ([key, value] of Object.entries(item)) {
+    //     if (key === "U_detail_code") {
+    //       actualItem.detail = [];
+    //       isDetailField = true;
+    //       actualItem.detail.push({});
+    //     }
 
-        if (isDetailField) {
-          actualItem.detail[0][key] = value;
-        } else {
-          actualItem[key] = value;
-        }
-      }
+    //     if (isDetailField) {
+    //       actualItem.detail[0][key] = value;
+    //     } else {
+    //       actualItem[key] = value;
+    //     }
+    //   }
 
-      if (response.some((sbItem) => sbItem.Code === item.Code)) {
-        let currentIndex = response.findIndex((i) => i.Code == item.Code);
+    //   if (response.some((sbItem) => sbItem.Code === item.Code)) {
+    //     let currentIndex = response.findIndex((i) => i.Code == item.Code);
 
-        response[currentIndex].detail.push(actualItem.detail[0]);
-      } else {
-        response.push(actualItem);
-      }
-    }
+    //     response[currentIndex].detail.push(actualItem.detail[0]);
+    //   } else {
+    //     response.push(actualItem);
+    //   }
+    // }
 
-    return response;
+    return data;
+  } catch (error) {
+    console.log(error);
+  }
+}
+
+async function getMrpDetailById(params) {
+  try {
+    //const mrp = Mrp(params);
+
+    const statement = `SELECT 
+     
+      "Code" AS "U_detail_code",
+      "Name" AS "U_detail_name",
+      "U_mrp_id" AS "fk_mrp_id",
+      "U_item_code" ,
+      "U_factory_item_code" ,
+      "U_description" AS "U_detail_description",
+      "U_factory_detail_description",
+      "U_alternative_references",
+      "U_model" ,
+      "U_inv_stock",
+      "U_inv_transit",
+      "U_inv_transit" + "U_inv_stock" as "sum_inv_trans",
+      "U_frequency" ,
+      "U_avg_demand",
+      "U_reorder_point",
+      "U_rating" ,
+      "U_price" as "last_purchase_price",
+      "U_actual_price" as "price",
+      "U_currency" ,
+      "U_suggested_amount" as "U_detail_suggested_amount",
+      "U_order_amount",
+      "U_line_total",
+      "U_sales_01",
+      "U_sales_02",
+      "U_sales_03",
+      "U_sales_04",
+      "U_sales_05",
+      "U_sales_06",
+      "U_sales_07",
+      "U_sales_08",
+      "U_sales_09",
+      "U_sales_10",
+      "U_sales_11",
+      "U_sales_12",
+      "U_is_included"
+    FROM "${params?.schema}"."${DETAIL_TABLE}"
+    WHERE "U_mrp_id" = '${params?.mrpId}'
+    ORDER BY "U_description"`;
+    console.log(statement);
+    const data = db.exec(statement);
+
+    const response = [];
+
+    // for (item of data) {
+    //   //if (!response.some((sbItem) => sbItem.Code === item.Code)) {
+    //   let isDetailField = false;
+    //   let actualItem = {};
+    //   //actualItem.detail = [];
+
+    //   for ([key, value] of Object.entries(item)) {
+    //     if (key === "U_detail_code") {
+    //       actualItem.detail = [];
+    //       isDetailField = true;
+    //       actualItem.detail.push({});
+    //     }
+
+    //     if (isDetailField) {
+    //       actualItem.detail[0][key] = value;
+    //     } else {
+    //       actualItem[key] = value;
+    //     }
+    //   }
+
+    //   if (response.some((sbItem) => sbItem.Code === item.Code)) {
+    //     let currentIndex = response.findIndex((i) => i.Code == item.Code);
+
+    //     response[currentIndex].detail.push(actualItem.detail[0]);
+    //   } else {
+    //     response.push(actualItem);
+    //   }
+    // }
+
+    return data;
   } catch (error) {
     console.log(error);
   }
@@ -521,4 +567,5 @@ module.exports = {
   update,
   remove,
   processPriceFile,
+  getMrpDetailById,
 };

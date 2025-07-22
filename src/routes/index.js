@@ -60,6 +60,18 @@ module.exports = (app) => {
       });
   });
 
+  router.get("/mrp-detail", (req, res) => {
+    mrpCtrl
+      .getMrpDetailById(req.query)
+      .then((data) => {
+        res.send(data);
+      })
+      .catch((err) => {
+        console.log(err);
+        res.send(err);
+      });
+  });
+
   router.put("/mrp", (req, res) => {
     mrpCtrl
       .update(req.query, req.body)
