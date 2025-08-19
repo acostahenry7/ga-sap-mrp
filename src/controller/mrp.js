@@ -485,7 +485,7 @@ async function update(params, data) {
 
 async function remove(params) {
   try {
-    const [{ U_status: currentStatus }] = db.exec(
+    const [{ U_status: currentStatus }] = await db.exec(
       `SELECT "U_status" FROM "${params.schema}"."${TABLE}" WHERE "U_mrp_id" = '${params.mrpId}'`
     );
     console.log("##", currentStatus);
@@ -500,7 +500,7 @@ async function remove(params) {
       const statement = `UPDATE "${params.schema}"."${TABLE}"
       SET "U_status" = 'CANCELED'
       WHERE "U_mrp_id" = '${params.mrpId}'`;
-      db.exec(statement);
+      await db.exec(statement);
       return true;
     } else if (currentStatus == "CLOSED") {
       throw new Error("Este documento ya está cerrado y NO permite cambios");
