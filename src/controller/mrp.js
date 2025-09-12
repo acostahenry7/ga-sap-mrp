@@ -40,7 +40,7 @@ function Mrp(
 
     resultingObject = {
       Code: newCode,
-      Name: mrpCode,
+      Name: newCode,
       U_mrp_id: mrpId || newMrpId,
       U_mrp_code: mrpCode,
       U_description: description,
