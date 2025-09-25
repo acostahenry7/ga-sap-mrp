@@ -23,6 +23,7 @@ async function getModelList(params) {
       `select DISTINCT("U_GB_VehicleModel") AS "model"
       from "${params.schema}"."OITM" 
       WHERE "U_GB_VehicleModel" IS NOT NULL
+      AND "U_OcrCode3" LIKE '${params.brandCode || "%"}'
       ORDER BY "U_GB_VehicleModel"`
     );
 
